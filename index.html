@@ -1,93 +1,139 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>צ'אט GPT Puter עם</title>
+  <meta charset="UTF-8" />
+  <title>תיקון תמלול GPT עם Puter</title>
   <script src="https://js.puter.com/v2/"></script>
   <style>
-    body { font-family: sans-serif; direction: rtl; background: #f5f8fc; padding: 20px; }
-    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    textarea, input, select { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
-    .response { white-space: pre-line; border: 1px solid #ccc; padding: 10px; min-height: 100px; }
-    .error { color: red; margin-top: 10px; }
-    .hidden { display: none; }
+    body {
+      font-family: sans-serif;
+      background-color: #f4f6fa;
+      direction: rtl;
+      text-align: center;
+    }
+    #app {
+      max-width: 700px;
+      margin: 2rem auto;
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    textarea {
+      width: 100%;
+      height: 160px;
+      margin-top: 1rem;
+      padding: 0.5rem;
+    }
+    #output {
+      text-align: right;
+      white-space: pre-line;
+      background: #f9f9f9;
+      padding: 1rem;
+      margin-top: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+    }
+    .error {
+      color: red;
+      margin-top: 1rem;
+    }
+    .user-info {
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>צ'אט GPT Puter עם</h2>
-    <div id="user-info"></div>
-    <button id="login-btn">🔑 התחבר</button>
-    <button id="logout-btn" class="hidden">🛋️ התנתק</button>
+  <div id="app">
+    <h2>✍️ תיקון תמלול GPT עם Puter</h2>
 
-    <textarea id="prompt" placeholder="הקלד שאלה..."></textarea>
+    <div id="authSection" class="user-info">
+      <span id="userInfo"></span>
+      <button id="loginBtn">🔑 התחבר</button>
+      <button id="logoutBtn" style="display:none">📴 התנתק</button>
+    </div>
+
+    <textarea id="inputText" placeholder="הדבק כאן את תמלול הראיון..."></textarea><br>
     <button onclick="sendPrompt()">שלח</button>
-    <div id="response" class="response"></div>
-    <div id="error" class="error"></div>
+
+    <div id="output"></div>
+    <div class="error" id="error"></div>
   </div>
 
   <script>
+    const inputText = document.getElementById('inputText');
+    const output = document.getElementById('output');
+    const errorBox = document.getElementById('error');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userInfo = document.getElementById('userInfo');
+
+    // בדיקת התחברות
     async function checkAuth() {
       try {
-        const user = await puter.auth.me();
-        if (user?.username) {
-          document.getElementById('user-info').innerHTML = `מחובר כברה: <strong>🔐 ${user.username}</strong>`;
-          document.getElementById('login-btn').classList.add('hidden');
-          document.getElementById('logout-btn').classList.remove('hidden');
+        const user = await puter.auth.whoami();
+        console.log("🟢 מחובר בתור:", user.username);
+        userInfo.innerHTML = `מחובר בתור: <strong>${user.username}</strong> 🔒`;
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline';
+      } catch (err) {
+        console.log("🔴 לא מחובר", err);
+        userInfo.textContent = "";
+        loginBtn.style.display = 'inline';
+        logoutBtn.style.display = 'none';
+      }
+    }
+
+    // התחברות
+    loginBtn.onclick = async () => {
+      try {
+        await puter.auth.signInWithPopup();
+        location.reload();
+      } catch (err) {
+        console.error("שגיאה בהתחברות:", err);
+      }
+    };
+
+    // התנתקות
+    logoutBtn.onclick = async () => {
+      await puter.auth.signOut();
+      location.reload();
+    };
+
+    // שליחת תמלול לתיקון
+    async function sendPrompt() {
+      const text = inputText.value.trim();
+      output.innerHTML = "";
+      errorBox.textContent = "";
+
+      if (!text) {
+        errorBox.textContent = "יש להזין תמלול";
+        return;
+      }
+
+      const prompt = `תקן את התמלול הבא כך שיהיה ברור, מחולק לפי דוברים ('דובר 1:', 'דובר 2:') וכולל סימני פיסוק. שמור על נאמנות לדברים המקוריים. הנה התמלול:\n\n${text}`;
+      console.log("📤 שואל את המודל עם prompt:", prompt.slice(0, 300) + '...');
+
+      try {
+        const resp = await puter.ai.chat(prompt, {
+          model: 'claude',
+          stream: true
+        });
+
+        for await (const part of resp) {
+          output.innerHTML += (part?.text || '').replace(/\n/g, '<br>');
         }
       } catch (err) {
-        console.warn('Not authenticated yet.');
+        console.error("❌ שגיאה במשלוח:", err);
+        errorBox.textContent = "שגיאה: " + (err.message || JSON.stringify(err));
       }
     }
 
-    async function login() {
-      await puter.auth.login();
-      location.reload();
-    }
-
-    async function logout() {
-      await puter.auth.logout();
-      location.reload();
-    }
-
-    document.getElementById('login-btn').onclick = login;
-    document.getElementById('logout-btn').onclick = logout;
     checkAuth();
-
-    async function sendPrompt() {
-      const promptText = document.getElementById('prompt').value.trim();
-      const outputEl = document.getElementById('response');
-      const errorEl = document.getElementById('error');
-      outputEl.innerHTML = '';
-      errorEl.innerHTML = '';
-
-      if (!promptText) return;
-
-      const maxLen = 1500;
-      const chunks = [];
-      for (let i = 0; i < promptText.length; i += maxLen) {
-        chunks.push(promptText.substring(i, i + maxLen));
-      }
-
-      console.log(`נשלחו של ${chunks.length} קטעים`);
-
-      for (let i = 0; i < chunks.length; i++) {
-        const part = chunks[i];
-        console.log(`קטע ${i+1}: ${part.length} תווים`);
-        try {
-          const resp = await puter.ai.chat(part, { model: 'claude', stream: true });
-          for await (const sub of resp) {
-            outputEl.innerHTML += sub?.text?.replaceAll('\n', '<br>') || '';
-          }
-        } catch (err) {
-          console.error("שגיאה בפרומפט:", err);
-          errorEl.textContent = `שגיאה: ${err?.message || err || 'לא ידועה'}`;
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
   </script>
 </body>
 </html>
