@@ -2,26 +2,21 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>צ'אט GPT בעברית</title>
+  <title>צ'אט GPT</title>
   <script src="https://js.puter.com/v2/"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f4f6f9;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       padding: 2em;
-    }
-
-    h1 {
-      color: #333;
+      text-align: center;
     }
 
     #chat-box {
-      width: 100%;
+      display: none;
       max-width: 600px;
+      margin: 0 auto;
       background: #fff;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -34,14 +29,12 @@
       margin-bottom: 1em;
       border-bottom: 1px solid #ccc;
       padding: 0.5em;
+      text-align: right;
     }
 
-    .message {
-      margin: 0.5em 0;
-    }
-
-    .user { color: #0077cc; text-align: right; }
-    .bot  { color: #222; text-align: left; }
+    .message { margin: 0.5em 0; }
+    .user { color: #0077cc; }
+    .bot { color: #222; }
 
     #input-area {
       display: flex;
@@ -51,7 +44,6 @@
     input[type="text"] {
       flex: 1;
       padding: 0.5em;
-      font-size: 1em;
     }
 
     button {
@@ -66,27 +58,34 @@
     #status {
       margin-top: 0.5em;
       color: gray;
-      font-size: 0.9em;
+    }
+
+    #loading {
+      font-size: 1.2em;
+      color: #333;
     }
   </style>
 </head>
 <body>
+
   <h1>צ'אט GPT</h1>
+  <div id="loading">טוען ומבצע התחברות...</div>
+
   <div id="chat-box">
     <div id="messages"></div>
     <div id="input-area">
       <input type="text" id="input" placeholder="הקלד שאלה...">
       <button onclick="sendMessage()">שלח</button>
     </div>
-    <div id="status">...</div>
+    <div id="status">התקבלה תשובה.</div>
   </div>
 
   <script>
     const messages = [];
 
-    function addMessage(text, fromUser = false) {
+    function addMessage(text, isUser) {
       const div = document.createElement("div");
-      div.className = "message " + (fromUser ? "user" : "bot");
+      div.className = "message " + (isUser ? "user" : "bot");
       div.textContent = text;
       document.getElementById("messages").appendChild(div);
       document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
@@ -103,24 +102,31 @@
       document.getElementById("status").textContent = "שולח...";
 
       try {
-        const response = await puter.ai.chat(messages, {
-          model: "gpt-4o"  // תוכל לשנות ל־gpt-4o-mini או אחר לפי הצורך
-        });
-
-        if (response?.message?.content) {
-          const reply = response.message.content;
-          addMessage(reply, false);
-          messages.push({ role: "assistant", content: reply });
-          document.getElementById("status").textContent = "התקבלה תשובה.";
-        } else {
-          throw new Error("לא התקבלה תשובה תקינה");
-        }
+        const response = await puter.ai.chat(messages, { model: "gpt-4o" });
+        const reply = response?.message?.content || "לא התקבלה תשובה.";
+        addMessage(reply, false);
+        messages.push({ role: "assistant", content: reply });
+        document.getElementById("status").textContent = "התקבלה תשובה.";
       } catch (err) {
-        console.error("שגיאה:", err);
-        addMessage("שגיאה: " + (err.message || JSON.stringify(err)), false);
+        addMessage("שגיאה: " + (err.message || "שגיאה כללית"), false);
         document.getElementById("status").textContent = "שגיאה בשליחה.";
       }
     }
+
+    // התחברות לפני הצגת הצ'אט
+    (async () => {
+      try {
+        if (!await puter.auth.isSignedIn()) {
+          await puter.auth.signIn();
+        }
+        document.getElementById("chat-box").style.display = "block";
+        document.getElementById("loading").style.display = "none";
+        addMessage("שלום! איך אפשר לעזור לך היום?", false);
+      } catch (e) {
+        document.getElementById("loading").textContent = "שגיאה בהתחברות: " + e.message;
+        console.error(e);
+      }
+    })();
   </script>
 </body>
 </html>
