@@ -23,10 +23,24 @@
       justify-content: space-between;
       margin-bottom: 1em;
     }
-    button { padding: .5em 1em; border: none; border-radius: 6px; cursor: pointer; }
-    #sign-in { background: #28a745; color: white; }
-    #sign-out { background: #dc3545; color: white; }
-    #user-info { align-self: center; }
+    button {
+      padding: .5em 1em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #sign-in {
+      background: #4285F4;
+      color: white;
+    }
+    #sign-out {
+      background: #dc3545;
+      color: white;
+    }
+    #user-info {
+      align-self: center;
+    }
     #chat-container {
       width: 100%;
       max-width: 600px;
@@ -37,20 +51,57 @@
       flex-direction: column;
       height: 70vh;
     }
-    #messages { flex: 1; overflow-y: auto; padding: 1em; border-bottom: 1px solid #ddd; }
-    .msg { margin: .5em 0; padding: .5em .8em; border-radius: 6px; max-width: 80%; }
-    .user { background: #d0ebff; margin-left: auto; text-align: right; }
-    .ai { background: #f1f1f1; margin-right: auto; text-align: left; }
-    #chat-input { display: flex; gap: .5em; padding: 1em; }
-    #chat-input input[type="text"] { flex: 1; padding: .7em; border: 1px solid #ccc; border-radius: 6px; }
-    #chat-input input[type="file"] { padding: .3em; }
-    #chat-input button { background: #0077cc; color: white; }
-    #status { margin-top: 10px; color: gray; font-size: 0.9em; }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1em;
+      border-bottom: 1px solid #ddd;
+    }
+    .msg {
+      margin: .5em 0;
+      padding: .5em .8em;
+      border-radius: 6px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .user {
+      background: #d0ebff;
+      margin-left: auto;
+      text-align: right;
+    }
+    .ai {
+      background: #f1f1f1;
+      margin-right: auto;
+      text-align: left;
+    }
+    #chat-input {
+      display: flex;
+      gap: .5em;
+      padding: 1em;
+    }
+    #chat-input input[type="text"] {
+      flex: 1;
+      padding: .7em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    #chat-input input[type="file"] {
+      padding: .3em;
+    }
+    #chat-input button {
+      background: #0077cc;
+      color: white;
+    }
+    #status {
+      margin-top: 10px;
+      color: gray;
+      font-size: 0.9em;
+    }
   </style>
 </head>
 <body>
   <div id="top-bar">
-    <button id="sign-in" onclick="signIn()">התחבר</button>
+    <button id="sign-in" onclick="signIn()">התחבר עם Google</button>
     <span id="user-info">לא מחובר</span>
     <button id="sign-out" onclick="signOut()" style="display:none">התנתק</button>
   </div>
@@ -90,7 +141,7 @@
 
     async function signIn() {
       try {
-        await puter.auth.signIn();
+        await puter.auth.signIn(); // כולל אפשרות Google
         statusDiv.textContent = "התחברת בהצלחה.";
         await updateAuthUI();
       } catch (err) {
@@ -127,6 +178,7 @@
       const file = fileElm.files[0];
 
       if (!text && !file) return;
+
       await updateAuthUI();
       if (!puter.auth.isSignedIn()) {
         appendMsg("אנא התחבר לפני שליחה.", false);
@@ -154,20 +206,26 @@
       input.value = '';
 
       try {
-        const res = await puter.ai.chat(messages, { model: 'openai:gpt-4o' });
-        console.log("AI response:", res);
+        let res = await puter.ai.chat(messages, { model: 'openai:gpt-4o' });
+        if (!res?.message?.content) throw new Error("תשובה לא תקינה מהמודל");
         const aiMsg = res.message.content;
         appendMsg(aiMsg, false);
         messages.push({ role: 'assistant', content: aiMsg });
         statusDiv.textContent = "התקבלה תשובה.";
-      } catch (err) {
-        console.error("Chat error:", err);
-        let errorMsg = 'שגיאה בלתי מזוהה';
-        if (typeof err === 'string') errorMsg = err;
-        else if (err.message) errorMsg = err.message;
-        else try { errorMsg = JSON.stringify(err); } catch {}
-        appendMsg('שגיאה: ' + errorMsg, false);
-        statusDiv.textContent = "אירעה שגיאה.";
+      } catch (err1) {
+        console.warn("GPT-4o failed, falling back to GPT-3.5", err1);
+        try {
+          let res = await puter.ai.chat(messages, { model: 'openai:gpt-3.5-turbo' });
+          const aiMsg = res.message.content;
+          appendMsg(aiMsg + " (תשובה ממודל חלופי)", false);
+          messages.push({ role: 'assistant', content: aiMsg });
+          statusDiv.textContent = "התקבלה תשובה ממודל חלופי.";
+        } catch (err2) {
+          console.error("Both models failed:", err2);
+          let errorMsg = err2.message || JSON.stringify(err2);
+          appendMsg("שגיאה: " + errorMsg, false);
+          statusDiv.textContent = "אירעה שגיאה.";
+        }
       }
     }
   </script>
