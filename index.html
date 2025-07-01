@@ -45,6 +45,7 @@
     #chat-input input[type="text"] { flex: 1; padding: .7em; border: 1px solid #ccc; border-radius: 6px; }
     #chat-input input[type="file"] { padding: .3em; }
     #chat-input button { background: #0077cc; color: white; }
+    #status { margin-top: 10px; color: gray; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -63,15 +64,19 @@
     </div>
   </div>
 
+  <div id="status">...</div>
+
   <script>
     const messages = [];
     const userInfo = document.getElementById('user-info');
     const btnSignIn = document.getElementById('sign-in');
     const btnSignOut = document.getElementById('sign-out');
+    const statusDiv = document.getElementById('status');
 
     async function updateAuthUI() {
       if (puter.auth.isSignedIn()) {
         const user = await puter.auth.getUser();
+        console.log("Signed in as:", user);
         userInfo.textContent = `שלום, ${user.username}`;
         btnSignIn.style.display = 'none';
         btnSignOut.style.display = 'inline-block';
@@ -79,16 +84,30 @@
         userInfo.textContent = 'לא מחובר';
         btnSignIn.style.display = 'inline-block';
         btnSignOut.style.display = 'none';
+        console.log("Not signed in");
       }
     }
 
     async function signIn() {
-      await puter.auth.signIn();
-      await updateAuthUI();
+      try {
+        await puter.auth.signIn();
+        statusDiv.textContent = "התחברת בהצלחה.";
+        await updateAuthUI();
+      } catch (err) {
+        console.error("Login error:", err);
+        statusDiv.textContent = "שגיאה בהתחברות: " + (err.message || JSON.stringify(err));
+      }
     }
+
     async function signOut() {
-      puter.auth.signOut();
-      await updateAuthUI();
+      try {
+        puter.auth.signOut();
+        await updateAuthUI();
+        statusDiv.textContent = "התנתקת.";
+      } catch (err) {
+        console.error("Logout error:", err);
+        statusDiv.textContent = "שגיאה בהתנתקות: " + (err.message || JSON.stringify(err));
+      }
     }
 
     updateAuthUI();
@@ -109,14 +128,22 @@
 
       if (!text && !file) return;
       await updateAuthUI();
-      if (!puter.auth.isSignedIn()) { appendMsg('אנא התחבר לפני שליחה.', false); return; }
+      if (!puter.auth.isSignedIn()) {
+        appendMsg("אנא התחבר לפני שליחה.", false);
+        return;
+      }
+
+      statusDiv.textContent = "שולח הודעה...";
+      console.log("Preparing message:", text);
 
       if (file) {
         try {
           const res = await puter.storage.upload(file);
           text += `<br><a href="${res.url}" target="_blank">${file.name}</a>`;
-        } catch {
-          appendMsg('שגיאה בהעלאת הקובץ.', false);
+          console.log("File uploaded:", res);
+        } catch (err) {
+          console.error("File upload error:", err);
+          appendMsg("שגיאה בהעלאת הקובץ.", false);
           return;
         }
         fileElm.value = '';
@@ -124,15 +151,23 @@
 
       appendMsg(text, true);
       messages.push({ role: 'user', content: text });
-
       input.value = '';
+
       try {
         const res = await puter.ai.chat(messages, { model: 'openai:gpt-4o' });
+        console.log("AI response:", res);
         const aiMsg = res.message.content;
         appendMsg(aiMsg, false);
         messages.push({ role: 'assistant', content: aiMsg });
+        statusDiv.textContent = "התקבלה תשובה.";
       } catch (err) {
-        appendMsg('שגיאה: ' + (err.message || err), false);
+        console.error("Chat error:", err);
+        let errorMsg = 'שגיאה בלתי מזוהה';
+        if (typeof err === 'string') errorMsg = err;
+        else if (err.message) errorMsg = err.message;
+        else try { errorMsg = JSON.stringify(err); } catch {}
+        appendMsg('שגיאה: ' + errorMsg, false);
+        statusDiv.textContent = "אירעה שגיאה.";
       }
     }
   </script>
