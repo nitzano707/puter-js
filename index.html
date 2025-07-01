@@ -1,73 +1,66 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
-  <title>צ'אט בינה מלאכותית - GPT-4o</title>
+  <title>צ'אט בינה מלאכותית</title>
   <script src="https://js.puter.com/v2/"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: 'Arial', sans-serif;
-      background: linear-gradient(to bottom left, #e6f0ff, #ffffff);
+      font-family: "Arial", sans-serif;
+      background: #eef2f3;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 0;
       padding: 2em;
-      direction: rtl;
     }
 
-    h1 {
-      color: #003366;
-      margin-bottom: 1em;
-    }
-
-    #chat {
+    #chat-container {
       width: 100%;
       max-width: 600px;
-      background: #ffffff;
+      background: white;
       border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      padding: 1em;
-      height: 400px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #messages {
+      height: 300px;
       overflow-y: auto;
+      border-bottom: 1px solid #ddd;
       margin-bottom: 1em;
+      padding: 10px;
     }
 
     .message {
       margin: 0.5em 0;
-      padding: 0.5em;
+      padding: 0.7em;
       border-radius: 8px;
     }
 
-    .user {
+    .user-message {
       background-color: #d0ebff;
       text-align: right;
     }
 
-    .ai {
+    .ai-message {
       background-color: #f1f1f1;
       text-align: left;
     }
 
-    #controls {
-      width: 100%;
-      max-width: 600px;
+    #chat-input {
       display: flex;
       flex-direction: column;
       gap: 0.5em;
     }
 
-    textarea {
-      width: 100%;
-      height: 80px;
-      resize: vertical;
+    input[type="text"],
+    input[type="file"] {
       padding: 0.5em;
       font-size: 1em;
-    }
-
-    input[type="file"] {
-      direction: ltr;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
 
     button {
@@ -76,7 +69,7 @@
       background-color: #0077cc;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
     }
 
@@ -84,86 +77,70 @@
       background-color: #005fa3;
     }
 
-    a.file-link {
-      color: #0066cc;
+    .file-link {
+      color: #0077cc;
       text-decoration: underline;
-      display: inline-block;
-      margin-top: 0.3em;
+      font-size: 0.9em;
     }
   </style>
 </head>
+
 <body>
-  <h1>צ'אט בינה מלאכותית</h1>
-
-  <div id="chat"></div>
-
-  <div id="controls">
-    <textarea id="prompt" placeholder="מה תרצה לשאול את הבינה המלאכותית?"></textarea>
-    <input type="file" id="fileInput">
-    <button onclick="sendMessage()">שלח</button>
+  <h2>צ'אט בינה מלאכותית</h2>
+  <div id="chat-container">
+    <div id="messages"></div>
+    <div id="chat-input">
+      <input type="text" id="input-message" placeholder="מה תרצה לשאול?">
+      <input type="file" id="fileInput">
+      <button onclick="sendMessage()">שלח</button>
+    </div>
   </div>
 
   <script>
-    const chatBox = document.getElementById("chat");
-    const promptInput = document.getElementById("prompt");
-    const fileInput = document.getElementById("fileInput");
+    const messages = [];
 
-    function appendMessage(text, sender = 'ai') {
-      const div = document.createElement("div");
-      div.className = `message ${sender}`;
-      div.innerHTML = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
+    function addMessage(text, isUser = false) {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("message");
+      msgDiv.classList.add(isUser ? "user-message" : "ai-message");
+      msgDiv.innerHTML = text;
+      document.getElementById("messages").appendChild(msgDiv);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
     }
 
     async function sendMessage() {
-      const userText = promptInput.value.trim();
-      const file = fileInput.files[0];
+      const input = document.getElementById("input-message");
+      const file = document.getElementById("fileInput").files[0];
+      const text = input.value.trim();
 
-      if (!userText && !file) return;
+      if (!text && !file) return;
 
-      if (userText) {
-        appendMessage(userText, 'user');
-        promptInput.value = '';
-      }
-
-      let fileLinkText = '';
+      let combined = text;
       if (file) {
-        const fileUrl = await uploadFileToPuter(file);
-        if (fileUrl) {
-          fileLinkText = `\n[קובץ שצורף: <a href="${fileUrl}" target="_blank" class="file-link">${file.name}</a>]`;
-          appendMessage(fileLinkText, 'user');
+        try {
+          const res = await puter.storage.upload(file);
+          const fileLink = `<br><a href="${res.url}" target="_blank" class="file-link">${file.name}</a>`;
+          combined += fileLink;
+        } catch (e) {
+          addMessage("שגיאה בהעלאת הקובץ", false);
         }
-        fileInput.value = '';
+        document.getElementById("fileInput").value = '';
       }
 
-      const finalPrompt = userText + (fileLinkText ? `\nהקובץ המצורף: ${file.name}` : '');
+      addMessage(combined, true);
+      messages.push({ role: "user", content: text });
+
+      input.value = '';
 
       try {
-        // ✅ התחברות אם לא מחובר
-        const session = await puter.auth.getSession();
-        if (!session) {
-          await puter.auth.signInWithPopup();
-        }
-
-        const response = await puter.ai.chat(finalPrompt, {
-          model: 'openai:gpt-4o'
-        });
-        appendMessage(response, 'ai');
+        const response = await puter.ai.chat(messages, { model: 'openai:gpt-4o' });
+        messages.push(response.message);
+        addMessage(response.message.content, false);
       } catch (err) {
-        appendMessage("אירעה שגיאה: " + (err.message || JSON.stringify(err)), 'ai');
-      }
-    }
-
-    async function uploadFileToPuter(file) {
-      try {
-        const res = await puter.storage.upload(file);
-        return res.url;
-      } catch (err) {
-        appendMessage("לא ניתן היה להעלות את הקובץ.", 'ai');
-        return null;
+        addMessage("שגיאה: " + (err.message || JSON.stringify(err)), false);
       }
     }
   </script>
 </body>
+
 </html>
