@@ -1,0 +1,15 @@
+<script src="https://js.puter.com/v2/"></script>
+<body>
+  <textarea id="prompt"></textarea>
+  <button id="send">שאל</button>
+  <pre id="output"></pre>
+
+  <script>
+    document.getElementById('send').onclick = () => {
+      const txt = document.getElementById('prompt').value;
+      puter.ai.chat(txt).then(res => {
+        document.getElementById('output').innerText = res;
+      });
+    }
+  </script>
+</body>
