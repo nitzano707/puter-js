@@ -1,132 +1,134 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>צ'אט GPT</title>
-  <script src="https://js.puter.com/v2/"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      padding: 2em;
-      text-align: center;
-    }
-
-    #chat-box {
-      display: none;
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      padding: 1em;
-    }
-
-    #messages {
-      height: 300px;
-      overflow-y: auto;
-      margin-bottom: 1em;
-      border-bottom: 1px solid #ccc;
-      padding: 0.5em;
-      text-align: right;
-    }
-
-    .message { margin: 0.5em 0; }
-    .user { color: #0077cc; }
-    .bot { color: #222; }
-
-    #input-area {
-      display: flex;
-      gap: 0.5em;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      padding: 0.5em;
-    }
-
-    button {
-      padding: 0.5em 1em;
-      background: #0077cc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #status {
-      margin-top: 0.5em;
-      color: gray;
-    }
-
-    #loading {
-      font-size: 1.2em;
-      color: #333;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>צ'אט GPT עם Puter</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f9fc;
+            direction: rtl;
+            text-align: right;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+        }
+        #messages {
+            min-height: 200px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+        #response {
+            margin-top: 10px;
+            color: green;
+        }
+        select, button, input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #userInfo {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .buttons button {
+            flex: 1;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h2>צ'אט GPT עם Puter</h2>
+        <div id="userInfo">🔒 לא מחובר</div>
 
-  <h1>צ'אט GPT</h1>
-  <div id="loading">טוען ומבצע התחברות...</div>
+        <div class="buttons">
+            <button onclick="signIn()">🔑 התחבר</button>
+            <button onclick="signOut()">🚪 התנתק</button>
+        </div>
 
-  <div id="chat-box">
-    <div id="messages"></div>
-    <div id="input-area">
-      <input type="text" id="input" placeholder="הקלד שאלה...">
-      <button onclick="sendMessage()">שלח</button>
+        <label for="model">בחר מודל:</label>
+        <select id="model">
+            <option value="gpt-4o-mini">gpt-4o-mini</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gpt-4.1-nano">gpt-4.1-nano</option>
+            <option value="gpt-4.5-preview">gpt-4.5-preview</option>
+            <option value="claude-3-7-sonnet">claude-3-7-sonnet</option>
+            <option value="deepseek-chat">deepseek-chat</option>
+            <option value="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo">LLaMA 3.1 8B</option>
+            <option value="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo">LLaMA 3.1 70B</option>
+        </select>
+
+        <div id="messages"></div>
+        <input type="text" id="userInput" placeholder="הקלד שאלה...">
+        <button onclick="sendMessage()">שלח</button>
+
+        <div id="response"></div>
     </div>
-    <div id="status">התקבלה תשובה.</div>
-  </div>
 
-  <script>
-    const messages = [];
-
-    function addMessage(text, isUser) {
-      const div = document.createElement("div");
-      div.className = "message " + (isUser ? "user" : "bot");
-      div.textContent = text;
-      document.getElementById("messages").appendChild(div);
-      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-    }
-
-    async function sendMessage() {
-      const input = document.getElementById("input");
-      const text = input.value.trim();
-      if (!text) return;
-
-      addMessage(text, true);
-      messages.push({ role: "user", content: text });
-      input.value = "";
-      document.getElementById("status").textContent = "שולח...";
-
-      try {
-        const response = await puter.ai.chat(messages, { model: "gpt-4o" });
-        const reply = response?.message?.content || "לא התקבלה תשובה.";
-        addMessage(reply, false);
-        messages.push({ role: "assistant", content: reply });
-        document.getElementById("status").textContent = "התקבלה תשובה.";
-      } catch (err) {
-        addMessage("שגיאה: " + (err.message || "שגיאה כללית"), false);
-        document.getElementById("status").textContent = "שגיאה בשליחה.";
-      }
-    }
-
-    // התחברות לפני הצגת הצ'אט
-    (async () => {
-      try {
-        if (!await puter.auth.isSignedIn()) {
-          await puter.auth.signIn();
+    <script>
+        async function signIn() {
+            try {
+                await puter.auth.signIn();
+                updateUserInfo();
+            } catch (error) {
+                alert('שגיאה בהתחברות: ' + error.message);
+            }
         }
-        document.getElementById("chat-box").style.display = "block";
-        document.getElementById("loading").style.display = "none";
-        addMessage("שלום! איך אפשר לעזור לך היום?", false);
-      } catch (e) {
-        document.getElementById("loading").textContent = "שגיאה בהתחברות: " + e.message;
-        console.error(e);
-      }
-    })();
-  </script>
+
+        async function signOut() {
+            await puter.auth.signOut();
+            updateUserInfo();
+        }
+
+        async function updateUserInfo() {
+            const user = await puter.auth.getUser();
+            if (user) {
+                document.getElementById("userInfo").innerText = `👤 מחובר בתור: ${user.name || user.username || user.email}`;
+            } else {
+                document.getElementById("userInfo").innerText = "🔒 לא מחובר";
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("userInput").value.trim();
+            const model = document.getElementById("model").value;
+            const messagesDiv = document.getElementById("messages");
+            if (!input) return;
+
+            messagesDiv.innerHTML += `👤 אתה: ${input}\n`;
+            document.getElementById("userInput").value = "ממתין לתשובה...";
+
+            try {
+                const response = await puter.ai.chat(input, { model });
+                const reply = response.message?.content || '[ללא תגובה]';
+                messagesDiv.innerHTML += `🤖 GPT: ${reply}\n\n`;
+            } catch (error) {
+                messagesDiv.innerHTML += `⚠️ שגיאה: ${error.message}\n\n`;
+            }
+
+            document.getElementById("userInput").value = "";
+        }
+
+        // בדיקת התחברות בהתחלה
+        updateUserInfo();
+    </script>
 </body>
 </html>
