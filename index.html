@@ -140,12 +140,18 @@
       const finalPrompt = userText + (fileLinkText ? `\nהקובץ המצורף: ${file.name}` : '');
 
       try {
+        // ✅ התחברות אם לא מחובר
+        const session = await puter.auth.getSession();
+        if (!session) {
+          await puter.auth.signInWithPopup();
+        }
+
         const response = await puter.ai.chat(finalPrompt, {
           model: 'openai:gpt-4o'
         });
         appendMessage(response, 'ai');
       } catch (err) {
-        appendMessage("אירעה שגיאה: " + err.message, 'ai');
+        appendMessage("אירעה שגיאה: " + (err.message || JSON.stringify(err)), 'ai');
       }
     }
 
