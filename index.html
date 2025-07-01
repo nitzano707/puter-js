@@ -1,156 +1,93 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he">
 <head>
-    <meta charset="UTF-8">
-    <title>GPT Puter צ'אט עם</title>
-    <script src="https://js.puter.com/v2/"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            background-color: #f3f6fb;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 800px;
-            width: 100%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        textarea, input, select, button {
-            margin-top: 10px;
-            width: 100%;
-            padding: 10px;
-            font-size: 1em;
-        }
-        textarea {
-            height: 200px;
-        }
-        .response {
-            text-align: right;
-            margin-top: 10px;
-            background: #f9f9f9;
-            padding: 10px;
-            border: 1px solid #ddd;
-            white-space: pre-wrap;
-            direction: rtl;
-        }
-        .error {
-            color: red;
-            margin-top: 10px;
-        }
-        .user-info {
-            font-size: 0.9em;
-            margin-bottom: 10px;
-        }
-        .user-info span {
-            font-weight: bold;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>צ'אט GPT Puter עם</title>
+  <script src="https://js.puter.com/v2/"></script>
+  <style>
+    body { font-family: sans-serif; direction: rtl; background: #f5f8fc; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    textarea, input, select { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+    .response { white-space: pre-line; border: 1px solid #ccc; padding: 10px; min-height: 100px; }
+    .error { color: red; margin-top: 10px; }
+    .hidden { display: none; }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h2>GPT Puter צ'אט עם</h2>
-    <div class="user-info" id="user-info"></div>
-    <button onclick="signOut()" id="logout-btn" class="hidden">התנתק 👜</button>
-    <button onclick="signIn()" id="login-btn" class="hidden">התחבר 🔑</button>
-    <textarea id="input" placeholder="הקלד שאלה..."></textarea>
+  <div class="container">
+    <h2>צ'אט GPT Puter עם</h2>
+    <div id="user-info"></div>
+    <button id="login-btn">🔑 התחבר</button>
+    <button id="logout-btn" class="hidden">🛋️ התנתק</button>
+
+    <textarea id="prompt" placeholder="הקלד שאלה..."></textarea>
     <button onclick="sendPrompt()">שלח</button>
     <div id="response" class="response"></div>
     <div id="error" class="error"></div>
-</div>
+  </div>
 
-<script>
-    const inputEl = document.getElementById("input");
-    const responseEl = document.getElementById("response");
-    const errorEl = document.getElementById("error");
-    const userInfoEl = document.getElementById("user-info");
-    const loginBtn = document.getElementById("login-btn");
-    const logoutBtn = document.getElementById("logout-btn");
-
+  <script>
     async function checkAuth() {
-        try {
-            const user = await puter.auth.whoami();
-            if (user) {
-                userInfoEl.innerHTML = `מחובר כברה: <span>${user.username}</span> 🔐`;
-                loginBtn.classList.add("hidden");
-                logoutBtn.classList.remove("hidden");
-            } else {
-                userInfoEl.innerHTML = "אין משתמש מחובר.";
-                loginBtn.classList.remove("hidden");
-                logoutBtn.classList.add("hidden");
-            }
-        } catch (e) {
-            console.error("Auth check error:", e);
-            userInfoEl.innerHTML = "\u05d0\u05d9\u05df \u05e9\u05e8\u05ea \u05de\u05e9\u05ea\u05de\u05e9.";
-            loginBtn.classList.remove("hidden");
-            logoutBtn.classList.add("hidden");
+      try {
+        const user = await puter.auth.me();
+        if (user?.username) {
+          document.getElementById('user-info').innerHTML = `מחובר כברה: <strong>🔐 ${user.username}</strong>`;
+          document.getElementById('login-btn').classList.add('hidden');
+          document.getElementById('logout-btn').classList.remove('hidden');
         }
+      } catch (err) {
+        console.warn('Not authenticated yet.');
+      }
     }
 
-    async function signIn() {
-        await puter.auth.signIn();
-        location.reload();
+    async function login() {
+      await puter.auth.login();
+      location.reload();
     }
 
-    async function signOut() {
-        await puter.auth.signOut();
-        location.reload();
+    async function logout() {
+      await puter.auth.logout();
+      location.reload();
     }
+
+    document.getElementById('login-btn').onclick = login;
+    document.getElementById('logout-btn').onclick = logout;
+    checkAuth();
 
     async function sendPrompt() {
-        const input = inputEl.value.trim();
-        responseEl.innerHTML = "";
-        errorEl.innerText = "";
+      const promptText = document.getElementById('prompt').value.trim();
+      const outputEl = document.getElementById('response');
+      const errorEl = document.getElementById('error');
+      outputEl.innerHTML = '';
+      errorEl.innerHTML = '';
 
-        if (!input) {
-            errorEl.innerText = "יש להקליד טקסט.";
-            return;
-        }
+      if (!promptText) return;
 
-        const MAX_CHARS = 3500;
-        const chunks = [];
-        for (let i = 0; i < input.length; i += MAX_CHARS) {
-            chunks.push(input.substring(i, i + MAX_CHARS));
-        }
+      const maxLen = 1500;
+      const chunks = [];
+      for (let i = 0; i < promptText.length; i += maxLen) {
+        chunks.push(promptText.substring(i, i + maxLen));
+      }
 
+      console.log(`נשלחו של ${chunks.length} קטעים`);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const part = chunks[i];
+        console.log(`קטע ${i+1}: ${part.length} תווים`);
         try {
-            for (let index = 0; index < chunks.length; index++) {
-                const chunk = chunks[index];
-                responseEl.innerHTML += `<p><strong>🔹 מקטע ${index + 1}:</strong></p>`;
-                const resp = await puter.ai.chat([
-                    {
-                        role: "system",
-                        content: "אתה עורך תמלול של ראיון בעברית. תקן את הטקסט תוך שמירה מלאה על נאמנות למקור, והפרד את הדוברים לפי ההקשר. הצג את הפלט כך: 'דובר 1: ...' 'דובר 2: ...'. אל תמציא מידע שלא קיים."
-                    },
-                    {
-                        role: "user",
-                        content: chunk
-                    }
-                ], false, { model: "claude" });
-
-                if (resp.success === false || resp.error) {
-                    console.error("שגיאה מהשרת:", resp);
-                    errorEl.innerText = `\u05e9\u05d2\u05d9\u05d0\u05d4: ${resp.error?.message || "לא ידועה"}`;
-                    break;
-                }
-
-                responseEl.innerHTML += resp.text.replaceAll('\n', '<br>');
-            }
+          const resp = await puter.ai.chat(part, { model: 'claude', stream: true });
+          for await (const sub of resp) {
+            outputEl.innerHTML += sub?.text?.replaceAll('\n', '<br>') || '';
+          }
         } catch (err) {
-            console.error("שגיאה:", err);
-            errorEl.innerText = "\u05e9\u05d2\u05d9\u05d0\u05d4: " + err.message;
+          console.error("שגיאה בפרומפט:", err);
+          errorEl.textContent = `שגיאה: ${err?.message || err || 'לא ידועה'}`;
+          break;
         }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
-
-    checkAuth();
-</script>
+  </script>
 </body>
 </html>
