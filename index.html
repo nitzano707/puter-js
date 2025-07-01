@@ -7,43 +7,26 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f7f9fc;
             direction: rtl;
-            text-align: right;
-            padding: 20px;
+            text-align: center;
+            background-color: #f6f8fa;
         }
         .container {
             max-width: 600px;
-            margin: auto;
+            margin: 20px auto;
+            padding: 20px;
             background: white;
             border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px #ccc;
         }
-        h2 {
-            text-align: center;
-        }
-        #messages {
-            min-height: 200px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            white-space: pre-wrap;
-        }
-        #response {
-            margin-top: 10px;
-            color: green;
-        }
-        select, button, input {
-            padding: 10px;
-            margin: 5px 0;
+        select, textarea, input, button {
             width: 100%;
+            margin: 10px 0;
+            padding: 10px;
             box-sizing: border-box;
         }
-        #userInfo {
-            font-size: 0.9em;
-            margin-bottom: 10px;
-            color: #333;
+        button {
+            cursor: pointer;
         }
         .buttons {
             display: flex;
@@ -52,45 +35,65 @@
         .buttons button {
             flex: 1;
         }
+        #response {
+            white-space: pre-wrap;
+            text-align: right;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            min-height: 50px;
+        }
+        #userInfo {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #333;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>צ'אט GPT עם Puter</h2>
-        <div id="userInfo">🔒 לא מחובר</div>
+        <div id="userInfo">בודק מצב התחברות...</div>
 
         <div class="buttons">
-            <button onclick="signIn()">🔑 התחבר</button>
-            <button onclick="signOut()">🚪 התנתק</button>
+            <button onclick="signOut()" style="display:none;">💻 התנתק</button>
+            <button onclick="signIn()" style="display:none;">🔑 התחבר</button>
         </div>
 
         <label for="model">בחר מודל:</label>
         <select id="model">
             <option value="gpt-4o-mini">gpt-4o-mini</option>
-            <option value="gpt-4o">gpt-4o</option>
-            <option value="gpt-4.1-nano">gpt-4.1-nano</option>
-            <option value="gpt-4.5-preview">gpt-4.5-preview</option>
-            <option value="claude-3-7-sonnet">claude-3-7-sonnet</option>
-            <option value="deepseek-chat">deepseek-chat</option>
-            <option value="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo">LLaMA 3.1 8B</option>
-            <option value="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo">LLaMA 3.1 70B</option>
+            <option value="gpt-4.1">gpt-4.1</option>
+            <option value="claude-opus-4">claude-opus-4</option>
+            <option value="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo">llama3-8B</option>
         </select>
 
-        <div id="messages"></div>
-        <input type="text" id="userInput" placeholder="הקלד שאלה...">
-        <button onclick="sendMessage()">שלח</button>
-
-        <div id="response"></div>
+        <textarea id="chatInput" rows="6" placeholder="הקלד שאלה..."></textarea>
+        <div id="response">⬅️ התשובה תופיע כאן</div>
+        <button onclick="sendChat()">שלח</button>
     </div>
 
     <script>
-        async function signIn() {
-            try {
-                await puter.auth.signIn();
-                updateUserInfo();
-            } catch (error) {
-                alert('שגיאה בהתחברות: ' + error.message);
+        async function updateUserInfo() {
+            const user = await puter.auth.getUser();
+            const userInfo = document.getElementById("userInfo");
+            const signInBtn = document.querySelector("button[onclick='signIn()']");
+            const signOutBtn = document.querySelector("button[onclick='signOut()']");
+
+            if (user) {
+                userInfo.innerHTML = `👤 מחובר בתור: <b>${user.name || user.username || user.email}</b>`;
+                signInBtn.style.display = "none";
+                signOutBtn.style.display = "inline-block";
+            } else {
+                userInfo.innerText = "🔒 לא מחובר";
+                signInBtn.style.display = "inline-block";
+                signOutBtn.style.display = "none";
             }
+        }
+
+        async function signIn() {
+            await puter.auth.signIn();
+            updateUserInfo();
         }
 
         async function signOut() {
@@ -98,36 +101,27 @@
             updateUserInfo();
         }
 
-        async function updateUserInfo() {
-            const user = await puter.auth.getUser();
-            if (user) {
-                document.getElementById("userInfo").innerText = `👤 מחובר בתור: ${user.name || user.username || user.email}`;
-            } else {
-                document.getElementById("userInfo").innerText = "🔒 לא מחובר";
-            }
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById("userInput").value.trim();
+        async function sendChat() {
+            const input = document.getElementById("chatInput").value.trim();
             const model = document.getElementById("model").value;
-            const messagesDiv = document.getElementById("messages");
-            if (!input) return;
+            const responseBox = document.getElementById("response");
 
-            messagesDiv.innerHTML += `👤 אתה: ${input}\n`;
-            document.getElementById("userInput").value = "ממתין לתשובה...";
+            if (!input) {
+                responseBox.innerText = "אנא הקלד שאלה.";
+                return;
+            }
+
+            responseBox.innerText = "⏳ ממתין לתשובה...";
 
             try {
-                const response = await puter.ai.chat(input, { model });
-                const reply = response.message?.content || '[ללא תגובה]';
-                messagesDiv.innerHTML += `🤖 GPT: ${reply}\n\n`;
-            } catch (error) {
-                messagesDiv.innerHTML += `⚠️ שגיאה: ${error.message}\n\n`;
+                const result = await puter.ai.chat(input, { model });
+                responseBox.innerText = result?.message?.content || "❌ לא התקבלה תשובה.";
+            } catch (err) {
+                responseBox.innerText = "⚠️ שגיאה: " + err.message;
             }
-
-            document.getElementById("userInput").value = "";
         }
 
-        // בדיקת התחברות בהתחלה
+        // Run on load
         updateUserInfo();
     </script>
 </body>
