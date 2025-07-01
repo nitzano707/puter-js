@@ -1,128 +1,121 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>צ'אט GPT עם Puter</title>
-    <script src="https://js.puter.com/v2/"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            direction: rtl;
-            text-align: center;
-            background-color: #f6f8fa;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ccc;
-        }
-        select, textarea, input, button {
-            width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        button {
-            cursor: pointer;
-        }
-        .buttons {
-            display: flex;
-            gap: 10px;
-        }
-        .buttons button {
-            flex: 1;
-        }
-        #response {
-            white-space: pre-wrap;
-            text-align: right;
-            background-color: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            min-height: 50px;
-        }
-        #userInfo {
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            color: #333;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>תיקון תמלול GPT</title>
+  <script src="https://js.puter.com/v2/"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      direction: rtl;
+      background: #f0f2f5;
+      padding: 20px;
+      text-align: center;
+    }
+    textarea, button {
+      width: 100%;
+      max-width: 600px;
+      padding: 10px;
+      margin: 10px auto;
+      box-sizing: border-box;
+      font-size: 1em;
+    }
+    #output {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ccc;
+      min-height: 100px;
+      white-space: pre-wrap;
+      text-align: right;
+    }
+    .auth-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .auth-buttons button {
+      width: 150px;
+    }
+    .user-info {
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>צ'אט GPT עם Puter</h2>
-        <div id="userInfo">בודק מצב התחברות...</div>
+  <h2>תיקון תמלול וחלוקה לדוברים</h2>
 
-        <div class="buttons">
-            <button onclick="signOut()" style="display:none;">💻 התנתק</button>
-            <button onclick="signIn()" style="display:none;">🔑 התחבר</button>
-        </div>
+  <div class="user-info" id="userInfo">בודק מצב התחברות...</div>
+  <div class="auth-buttons">
+    <button id="signInBtn" onclick="signIn()">🔑 התחבר</button>
+    <button id="signOutBtn" onclick="signOut()" style="display:none;">📴 התנתק</button>
+  </div>
 
-        <label for="model">בחר מודל:</label>
-        <select id="model">
-            <option value="gpt-4o-mini">gpt-4o-mini</option>
-            <option value="gpt-4.1">gpt-4.1</option>
-            <option value="claude-opus-4">claude-opus-4</option>
-            <option value="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo">llama3-8B</option>
-        </select>
+  <textarea id="transcriptInput" rows="10" placeholder="הדבק כאן את התמלול המקורי מהראיון..."></textarea>
+  <button onclick="fixTranscript()">✨ תקן את התמלול</button>
 
-        <textarea id="chatInput" rows="6" placeholder="הקלד שאלה..."></textarea>
-        <div id="response">⬅️ התשובה תופיע כאן</div>
-        <button onclick="sendChat()">שלח</button>
-    </div>
+  <div id="output">⬅️ כאן תופיע התוצאה המתוקנת...</div>
 
-    <script>
-        async function updateUserInfo() {
-            const user = await puter.auth.getUser();
-            const userInfo = document.getElementById("userInfo");
-            const signInBtn = document.querySelector("button[onclick='signIn()']");
-            const signOutBtn = document.querySelector("button[onclick='signOut()']");
+  <script>
+    async function updateUserInfo() {
+      const user = await puter.auth.getUser();
+      const userInfo = document.getElementById("userInfo");
+      const signInBtn = document.getElementById("signInBtn");
+      const signOutBtn = document.getElementById("signOutBtn");
 
-            if (user) {
-                userInfo.innerHTML = `👤 מחובר בתור: <b>${user.name || user.username || user.email}</b>`;
-                signInBtn.style.display = "none";
-                signOutBtn.style.display = "inline-block";
-            } else {
-                userInfo.innerText = "🔒 לא מחובר";
-                signInBtn.style.display = "inline-block";
-                signOutBtn.style.display = "none";
-            }
+      if (user) {
+        userInfo.textContent = "מחובר בתור: " + user.username;
+        signInBtn.style.display = "none";
+        signOutBtn.style.display = "inline-block";
+      } else {
+        userInfo.textContent = "לא מחובר";
+        signInBtn.style.display = "inline-block";
+        signOutBtn.style.display = "none";
+      }
+    }
+
+    async function signIn() {
+      await puter.auth.signIn();
+      await updateUserInfo();
+    }
+
+    async function signOut() {
+      await puter.auth.signOut();
+      await updateUserInfo();
+    }
+
+    async function fixTranscript() {
+      const input = document.getElementById("transcriptInput").value.trim();
+      const output = document.getElementById("output");
+      output.innerHTML = "⏳ מעבד את הבקשה...";
+
+      if (!input) {
+        output.innerHTML = "❗ יש להדביק תמלול תחילה.";
+        return;
+      }
+
+      const prompt = `תקן את התמלול הבא כך שיהיה נאמן למקור, אך כתוב בצורה תקנית וברורה. \
+חלק את הדוברים לפי ההקשר וציין בתחילת כל שורה מי מדבר ("דובר 1:", "דובר 2:" וכד'). \
+אל תמציא מידע שלא נאמר. זהו התמלול:
+
+${input}`;
+
+      try {
+        const response = await puter.ai.chat(prompt, { model: "claude", stream: true });
+        output.innerHTML = "";
+        for await (const part of response) {
+          output.innerHTML += (part?.text || "").replaceAll("\n", "<br>");
         }
+      } catch (error) {
+        output.innerHTML = "⚠️ שגיאה: " + error.message;
+      }
+    }
 
-        async function signIn() {
-            await puter.auth.signIn();
-            updateUserInfo();
-        }
-
-        async function signOut() {
-            await puter.auth.signOut();
-            updateUserInfo();
-        }
-
-        async function sendChat() {
-            const input = document.getElementById("chatInput").value.trim();
-            const model = document.getElementById("model").value;
-            const responseBox = document.getElementById("response");
-
-            if (!input) {
-                responseBox.innerText = "אנא הקלד שאלה.";
-                return;
-            }
-
-            responseBox.innerText = "⏳ ממתין לתשובה...";
-
-            try {
-                const result = await puter.ai.chat(input, { model });
-                responseBox.innerText = result?.message?.content || "❌ לא התקבלה תשובה.";
-            } catch (err) {
-                responseBox.innerText = "⚠️ שגיאה: " + err.message;
-            }
-        }
-
-        // Run on load
-        updateUserInfo();
-    </script>
+    // התחברות אוטומטית אם כבר מחובר
+    updateUserInfo();
+  </script>
 </body>
 </html>
