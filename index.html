@@ -1,121 +1,185 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>תיקון תמלול GPT</title>
-  <script src="https://js.puter.com/v2/"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      direction: rtl;
-      background: #f0f2f5;
-      padding: 20px;
-      text-align: center;
-    }
-    textarea, button {
-      width: 100%;
-      max-width: 600px;
-      padding: 10px;
-      margin: 10px auto;
-      box-sizing: border-box;
-      font-size: 1em;
-    }
-    #output {
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #ccc;
-      min-height: 100px;
-      white-space: pre-wrap;
-      text-align: right;
-    }
-    .auth-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    .auth-buttons button {
-      width: 150px;
-    }
-    .user-info {
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>צ'אט עם GPT Puter</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            background: #f2f4f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: #fff;
+            max-width: 700px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .auth-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            background: #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #ccc;
+        }
+
+        #user-info {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f1f1;
+            border-radius: 6px;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <h2>תיקון תמלול וחלוקה לדוברים</h2>
+<div class="chat-container">
+    <h1>צ'אט עם GPT Puter</h1>
 
-  <div class="user-info" id="userInfo">בודק מצב התחברות...</div>
-  <div class="auth-buttons">
-    <button id="signInBtn" onclick="signIn()">🔑 התחבר</button>
-    <button id="signOutBtn" onclick="signOut()" style="display:none;">📴 התנתק</button>
-  </div>
+    <div id="user-info">בודק מצב התחברות...</div>
 
-  <textarea id="transcriptInput" rows="10" placeholder="הדבק כאן את התמלול המקורי מהראיון..."></textarea>
-  <button onclick="fixTranscript()">✨ תקן את התמלול</button>
+    <div class="auth-buttons">
+        <button id="signInBtn">🔑 התחבר</button>
+        <button id="signOutBtn" class="hidden">📴 התנתק</button>
+    </div>
 
-  <div id="output">⬅️ כאן תופיע התוצאה המתוקנת...</div>
+    <textarea id="input" placeholder="הדבק כאן תמלול..."></textarea>
+    <button id="sendBtn">שלח</button>
 
-  <script>
-    async function updateUserInfo() {
-      const user = await puter.auth.getUser();
-      const userInfo = document.getElementById("userInfo");
-      const signInBtn = document.getElementById("signInBtn");
-      const signOutBtn = document.getElementById("signOutBtn");
+    <div id="response"></div>
+    <div id="error" class="error"></div>
+</div>
 
-      if (user) {
-        userInfo.textContent = "מחובר בתור: " + user.username;
-        signInBtn.style.display = "none";
-        signOutBtn.style.display = "inline-block";
-      } else {
-        userInfo.textContent = "לא מחובר";
-        signInBtn.style.display = "inline-block";
-        signOutBtn.style.display = "none";
-      }
+<script>
+    async function updateUI() {
+        const user = await puter.auth.getUser();
+        const userInfo = document.getElementById("user-info");
+        const signInBtn = document.getElementById("signInBtn");
+        const signOutBtn = document.getElementById("signOutBtn");
+
+        if (user) {
+            userInfo.innerHTML = `🔒 מחובר בתור: <strong>${user.username}</strong>`;
+            signInBtn.classList.add("hidden");
+            signOutBtn.classList.remove("hidden");
+        } else {
+            userInfo.innerHTML = "🔓 לא מחובר";
+            signInBtn.classList.remove("hidden");
+            signOutBtn.classList.add("hidden");
+        }
     }
 
     async function signIn() {
-      await puter.auth.signIn();
-      await updateUserInfo();
+        try {
+            await puter.auth.signIn();
+            console.log("🟢 התחברות הצליחה");
+            updateUI();
+        } catch (err) {
+            console.error("❌ שגיאת התחברות:", err);
+            document.getElementById("error").innerText = "שגיאה בהתחברות: " + err.message;
+        }
     }
 
     async function signOut() {
-      await puter.auth.signOut();
-      await updateUserInfo();
+        await puter.auth.signOut();
+        console.log("📴 נותק מהמערכת. מרענן את הדף...");
+        location.reload();
     }
 
-    async function fixTranscript() {
-      const input = document.getElementById("transcriptInput").value.trim();
-      const output = document.getElementById("output");
-      output.innerHTML = "⏳ מעבד את הבקשה...";
+    async function sendPrompt() {
+        const input = document.getElementById("input").value.trim();
+        const responseEl = document.getElementById("response");
+        const errorEl = document.getElementById("error");
+        responseEl.innerHTML = "";
+        errorEl.innerText = "";
 
-      if (!input) {
-        output.innerHTML = "❗ יש להדביק תמלול תחילה.";
-        return;
-      }
-
-      const prompt = `תקן את התמלול הבא כך שיהיה נאמן למקור, אך כתוב בצורה תקנית וברורה. \
-חלק את הדוברים לפי ההקשר וציין בתחילת כל שורה מי מדבר ("דובר 1:", "דובר 2:" וכד'). \
-אל תמציא מידע שלא נאמר. זהו התמלול:
-
-${input}`;
-
-      try {
-        const response = await puter.ai.chat(prompt, { model: "claude", stream: true });
-        output.innerHTML = "";
-        for await (const part of response) {
-          output.innerHTML += (part?.text || "").replaceAll("\n", "<br>");
+        if (!input) {
+            errorEl.innerText = "יש להקליד טקסט לפני שליחה.";
+            return;
         }
-      } catch (error) {
-        output.innerHTML = "⚠️ שגיאה: " + error.message;
-      }
+
+        try {
+            console.log("📝 שאלה נשלחת:", input);
+            const resp = await puter.ai.chat(
+                [
+                    {
+                        role: "system",
+                        content: "אתה עורך תמלול של ראיון בעברית. תקן את הטקסט תוך שמירה מלאה על נאמנות למקור, והפרד את הדוברים לפי ההקשר. הצג את הפלט כך: 'דובר 1: ...' 'דובר 2: ...'. אל תמציא מידע שלא קיים."
+                    },
+                    {
+                        role: "user",
+                        content: input
+                    }
+                ],
+                false,
+                { model: "claude", stream: true }
+            );
+
+            for await (const part of resp) {
+                if (part?.text) {
+                    responseEl.innerHTML += part.text;
+                }
+            }
+
+            console.log("✅ תשובה התקבלה");
+
+        } catch (err) {
+            console.error("❌ שגיאה בשליחה:", err);
+            errorEl.innerText = "שגיאה: " + (err.message || "לא ידועה");
+        }
     }
 
-    // התחברות אוטומטית אם כבר מחובר
-    updateUserInfo();
-  </script>
+    document.getElementById("signInBtn").onclick = signIn;
+    document.getElementById("signOutBtn").onclick = signOut;
+    document.getElementById("sendBtn").onclick = sendPrompt;
+
+    updateUI();
+</script>
 </body>
 </html>
